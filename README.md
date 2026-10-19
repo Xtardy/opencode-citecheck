@@ -1,5 +1,9 @@
 # opencode-citecheck
 
+[![npm version](https://img.shields.io/npm/v/opencode-citecheck.svg)](https://www.npmjs.com/package/opencode-citecheck)
+[![CI](https://github.com/Xtardy/opencode-citecheck/actions/workflows/ci.yml/badge.svg)](https://github.com/Xtardy/opencode-citecheck/actions/workflows/ci.yml)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 **Catch fabricated, unresolved and retracted references inside the OpenCode agent loop — before they reach your paper.**
 
 AI agents write citations that look plausible and do not exist. `opencode-citecheck` checks every `\cite{key}` and every DOI the moment the agent writes the file, and reports the problem back into the same turn, so the agent can fix it itself.

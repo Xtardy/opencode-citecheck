@@ -63,7 +63,18 @@ function parseArgs(argv) {
   return args
 }
 
-const CHECKABLE = new Set([".bib", ".tex", ".latex", ".ltx", ".md", ".markdown", ".rmd", ".qmd"])
+const CHECKABLE = new Set([
+  ".bib",
+  ".tex",
+  ".latex",
+  ".ltx",
+  ".md",
+  ".markdown",
+  ".mdx",
+  ".rmd",
+  ".qmd",
+  ".ipynb",
+])
 
 function collectFiles(target) {
   const path = resolve(target)
