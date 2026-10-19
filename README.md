@@ -48,8 +48,10 @@ Files inspected: `.tex`, `.latex`, `.ltx`, `.md`, `.markdown`, `.mdx`, `.rmd`, `
 ## Install
 
 ```bash
-opencode plugin add opencode-citecheck
+opencode plugin opencode-citecheck
 ```
+
+On OpenCode 2.x with the newer CLI this is `opencode plugin add opencode-citecheck`.
 
 Or add it to `opencode.json`:
 
@@ -63,7 +65,9 @@ Then just write. Nothing else to configure.
 
 ### Requirements
 
-OpenCode 1.18.29 or newer. Plugin API v1 and v2 are both supported from the same package.
+OpenCode 1.18.29 or newer.
+
+The package exports both plugin shapes: `server()` for plugin API v1 and `setup()` for v2. The v1 path is what has been tested end to end against a real OpenCode install (1.18.31). The v2 path is written against the published `@opencode/plugin` 2.0 typings but has not been exercised against a live v2 runtime; treat it as untested until someone reports back.
 
 ---
 
