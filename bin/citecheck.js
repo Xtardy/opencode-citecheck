@@ -147,37 +147,41 @@ async function main() {
   let inconclusive = 0
   let failed = false
   const jsonResults = []
+  const seen = new Set()
 
   const documents = files.filter((f) => extname(f).toLowerCase() !== ".bib")
   const bibs = files.filter((f) => extname(f).toLowerCase() === ".bib")
-  const coveredBibs = new Set()
 
   for (const file of [...documents, ...bibs]) {
-    const isBib = extname(file).toLowerCase() === ".bib"
-    if (isBib && coveredBibs.has(resolve(file))) continue
-
     const outcome = await checkFile({ file, config, verifier })
-    if (outcome.bibPath) coveredBibs.add(resolve(outcome.bibPath))
     if (outcome.notVerified) notVerified += outcome.notVerified
     if (outcome.issues.length === 0) continue
 
-    total += outcome.issues.length
-    inconclusive += outcome.issues.filter((i) => i.kind === "error").length
-    if (shouldFail(outcome.issues, args.failOn)) failed = true
+    const issues = outcome.issues.filter((issue) => {
+      const signature = `${issue.key}\u0000${issue.kind}\u0000${issue.detail}`
+      if (seen.has(signature)) return false
+      seen.add(signature)
+      return true
+    })
+    if (issues.length === 0) continue
+
+    total += issues.length
+    inconclusive += issues.filter((i) => i.kind === "error").length
+    if (shouldFail(issues, args.failOn)) failed = true
 
     if (args.json) {
       jsonResults.push({
         file,
         ...(outcome.bibPath ? { bibPath: outcome.bibPath } : {}),
         ...(outcome.notVerified ? { notVerified: outcome.notVerified } : {}),
-        issues: outcome.issues,
+        issues,
       })
     } else {
       process.stdout.write(
         formatReport({
           file,
           ...(outcome.bibPath ? { bibPath: outcome.bibPath } : {}),
-          issues: outcome.issues,
+          issues,
         }) + "\n",
       )
     }
