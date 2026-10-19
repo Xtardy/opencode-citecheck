@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [20, 22, 24]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: CLI smoke test
+        run: |
+          node bin/citecheck.js check test/fixtures/valid.bib --offline
+          node bin/citecheck.js check test/fixtures/ambiguous/paper.tex --offline --json | tee /tmp/out.json
+          node -e "const r=require('/tmp/out.json'); if(!r.results.some(x=>x.issues.some(i=>i.kind==='ambiguous-bib'))) process.exit(1)"

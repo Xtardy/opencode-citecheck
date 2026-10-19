@@ -1,0 +1,62 @@
+{
+  "name": "opencode-citecheck",
+  "version": "0.1.0",
+  "description": "Verify \\cite keys and DOIs inside the OpenCode agent loop — catch fabricated, unresolved and retracted references before they ship.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "opencode-citecheck": "bin/citecheck.js"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "citations",
+    "bibtex",
+    "doi",
+    "crossref",
+    "arxiv",
+    "retraction",
+    "bibliography",
+    "academic",
+    "latex"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Xtardy/opencode-citecheck.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Xtardy/opencode-citecheck/issues"
+  },
+  "homepage": "https://github.com/Xtardy/opencode-citecheck#readme",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test --experimental-strip-types test/*.test.ts",
+    "test:unit": "node --test --experimental-strip-types test/*.test.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "peerDependencies": {
+    "@opencode-ai/plugin": ">=1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@opencode-ai/plugin": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@opencode-ai/plugin": "^1.19.3",
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  }
+}
