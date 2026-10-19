@@ -210,7 +210,7 @@ npm run typecheck
 npm run build
 ```
 
-Tests stub `fetch`; the suite never touches the network.
+Tests stub `fetch`; the suite never touches the network. The test suite runs TypeScript directly through `--experimental-strip-types`, so it needs Node 22.6+. The published package itself is plain JavaScript and runs on Node 20.
 
 ---
 

@@ -10,7 +10,11 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [20, 22, 24]
+        # The test suite runs TypeScript directly through
+        # --experimental-strip-types, which needs Node 22.6+. The published
+        # package is plain JavaScript and still supports Node 20 — the
+        # node20 job below proves it.
+        node: [22, 24]
     steps:
       - uses: actions/checkout@v4
 
@@ -31,6 +35,28 @@ jobs:
         run: npm run build
 
       - name: CLI smoke test
+        run: |
+          node bin/citecheck.js check test/fixtures/valid.bib --offline
+          node bin/citecheck.js check test/fixtures/ambiguous/paper.tex --offline --json | tee /tmp/out.json
+          node -e "const r=require('/tmp/out.json'); if(!r.results.some(x=>x.issues.some(i=>i.kind==='ambiguous-bib'))) process.exit(1)"
+
+  node20:
+    name: runtime compatibility (Node 20)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: CLI smoke test on Node 20
         run: |
           node bin/citecheck.js check test/fixtures/valid.bib --offline
           node bin/citecheck.js check test/fixtures/ambiguous/paper.tex --offline --json | tee /tmp/out.json
