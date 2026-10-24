@@ -140,6 +140,25 @@ test("checkFile reports missing and ambiguous bibliographies without network acc
   assert.equal(fetchStub.calls.length, 0)
 })
 
+test("checkFile marks a declared but not yet written bibliography as pending", async (context) => {
+  // Given
+  const root = mkdtempSync(join(tmpdir(), "citecheck-check-pending-"))
+  context.after(() => rmSync(root, { recursive: true, force: true }))
+  const tex = join(root, "note.tex")
+  writeFileSync(tex, String.raw`\cite{alpha} \bibliography{note}`)
+  const fetchStub = stubFetch({})
+  context.after(fetchStub.restore)
+
+  // When
+  const outcome = await checkFile({ file: tex, config: onlineConfig, verifier: verifier() })
+
+  // Then
+  assert.equal(outcome.issues[0]?.kind, "no-bib")
+  assert.equal(outcome.issues[0]?.pending, true)
+  assert.match(outcome.issues[0]?.detail ?? "", /note\.bib is declared but does not exist yet/)
+  assert.equal(fetchStub.calls.length, 0)
+})
+
 test("checkFile skips disabled, unsupported, and unreadable inputs without network access", async (context) => {
   // Given
   const fetchStub = stubFetch({})

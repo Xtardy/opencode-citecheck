@@ -10,7 +10,7 @@ import { basename, dirname } from "node:path"
 
 import { parseBib, entryDoi, type BibEntry } from "./bib.js"
 import { extractCiteKeys, isBibFile, isSupportedFile } from "./cite.js"
-import { resolveBib, bibLabel } from "./locate.js"
+import { resolveBib, bibLabel, declaredBibNames } from "./locate.js"
 import { issueFromVerify, type Issue } from "./report.js"
 import { Verifier } from "./verify.js"
 import type { CitecheckConfig } from "./config.js"
@@ -115,12 +115,16 @@ async function checkCitations(
   const resolution = resolveBib(file, config.bibSearchDepth)
 
   if (resolution.via === "none") {
+    const declared = declaredBibNames(content)
     return {
       issues: [
         {
           key: `${keys.size} citation key(s)`,
           kind: "no-bib",
-          detail: `no .bib file found near ${basename(file)}`,
+          detail: declared.length
+            ? `${declared.map((n) => `${n}.bib`).join(", ")} is declared but does not exist yet`
+            : `no .bib file found near ${basename(file)}`,
+          ...(declared.length ? { pending: true } : {}),
         },
       ],
     }

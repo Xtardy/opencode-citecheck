@@ -22,6 +22,8 @@ export interface Issue {
   kind: "missing-key" | "retracted" | "unresolved" | "title-mismatch" | "no-doi" | "no-bib" | "ambiguous-bib" | "error"
   /** One-line explanation, already human-readable. */
   detail: string
+  /** The .bib is declared but not on disk yet; it is checked when it is written. */
+  pending?: boolean
 }
 
 export interface ReportInput {
@@ -83,7 +85,14 @@ function guidance(input: ReportInput): string {
     )
   }
 
-  if (kinds.has("no-bib")) {
+  if (input.issues.some((i) => i.kind === "no-bib" && i.pending)) {
+    parts.push(
+      `The declared bibliography is not on disk yet. Nothing has been verified so far; ` +
+        `the references are checked as soon as the .bib file is written.`,
+    )
+  }
+
+  if (input.issues.some((i) => i.kind === "no-bib" && !i.pending)) {
     parts.push(
       `No bibliography was found, so the citation keys could not be checked. ` +
         `Point the document at a .bib file before relying on these citations.`,
