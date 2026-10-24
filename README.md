@@ -28,6 +28,12 @@ See [CLI, for CI](#cli-for-ci).
 
 ![opencode-citecheck flagging a DOI that does not exist](https://raw.githubusercontent.com/Xtardy/opencode-citecheck/main/docs/demo.gif)
 
+And inside OpenCode, with a real agent (Sisyphus on DeepSeek V4.1 Flash Free, plugin 0.2.2, sped up 1.5x):
+
+![An OpenCode agent writing a bibliography, getting a wrong arXiv ID flagged, and fixing it](https://raw.githubusercontent.com/Xtardy/opencode-citecheck/main/docs/opencode-demo.gif)
+
+The wrong citation is staged: I put the bad arXiv ID (2005.11499, an unrelated statistics paper) in the prompt to simulate a hallucinated reference. The agent, the tool calls and the fix are real and unedited, apart from the speed-up and the cut of OpenCode's start-up time.
+
 ---
 
 ## Why this exists
