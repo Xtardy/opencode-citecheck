@@ -55,9 +55,9 @@ Files inspected: `.tex`, `.latex`, `.ltx`, `.md`, `.markdown`, `.mdx`, `.rmd`, `
 opencode plugin opencode-citecheck
 ```
 
-On OpenCode 2.x with the newer CLI this is `opencode plugin add opencode-citecheck`.
+This adds the package to the `.opencode/opencode.json` of the current project. Add `-g` to put it in your global config instead.
 
-Or add it to `opencode.json`:
+You can also edit the config by hand:
 
 ```json
 {
@@ -67,11 +67,16 @@ Or add it to `opencode.json`:
 
 Then just write. Nothing else to configure.
 
-### Requirements
+---
 
-OpenCode 1.18.29 or newer.
+## Status
 
-The package exports both plugin shapes: `server()` for plugin API v1 and `setup()` for v2. The v1 path is what has been tested end to end against a real OpenCode install (1.18.31). The v2 path is written against the published `@opencode/plugin` 2.0 typings but has not been exercised against a live v2 runtime; treat it as untested until someone reports back.
+Early, version 0.1.x.
+
+- Install checked on OpenCode 1.18.35. The hook itself was tested end to end on 1.18.31.
+- Needs OpenCode 1.18.29 or newer.
+- OpenCode 2.x: the package also exports `setup()` for plugin API v2, written against the published typings. I have not run it on a live v2, so if it breaks there, please open an issue.
+- The only network calls go to Crossref, OpenAlex and DataCite, with the DOIs found in your bibliography. The plugin does not edit your files; it only adds text to the tool result the model sees.
 
 ---
 
