@@ -377,7 +377,9 @@ export class Verifier {
 
     return {
       status: "unresolved",
-      detail: "DOI not found in Crossref, OpenAlex or DataCite",
+      detail: doi.toLowerCase().startsWith("10.48550/arxiv.")
+        ? `arXiv ID ${doi.slice("10.48550/arxiv.".length)} not found (no DOI registered for it in DataCite or OpenAlex)`
+        : "DOI not found in Crossref, OpenAlex or DataCite",
     }
   }
 

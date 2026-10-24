@@ -48,6 +48,7 @@ OpenCode exposes a hook that runs after a tool call and lets a plugin rewrite th
 | DOI does not exist | Crossref → OpenAlex → DataCite |
 | DOI points at a different paper | title comparison against the registry record |
 | Reference has been retracted | Crossref `updated-by`, sourced from Retraction Watch |
+| arXiv entry without a DOI field | the arXiv ID (`eprint`, `arXiv:...` in `journal`, or an arxiv.org URL) is checked through the DOI arXiv registers for every paper, `10.48550/arXiv.<id>` |
 | Entry has no DOI | optional, off by default (many valid entries lack one) |
 
 Supported syntax:

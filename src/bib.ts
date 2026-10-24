@@ -130,10 +130,44 @@ export function normalizeDoi(doi: string): string {
     .toLowerCase()
 }
 
-/** True if the entry carries a DOI we can verify remotely. */
+// arXiv identifiers: new style (2005.11401, optional version) and old style (hep-th/9901001).
+const ARXIV_ID = String.raw`(\d{4}\.\d{4,5}|[a-z][a-z-]*(?:\.[A-Za-z]{2})?\/\d{7})(?:v\d+)?`
+const ARXIV_BARE = new RegExp(`^${ARXIV_ID}$`, "i")
+const ARXIV_IN_TEXT = new RegExp(`(?:arxiv[:\\s]+|arxiv\\.org\\/(?:abs|pdf)\\/)${ARXIV_ID}`, "i")
+
+/** arXiv identifier of an entry (`eprint`, `arxiv`, or mentioned in journal/url/note), without version. */
+export function entryArxivId(entry: BibEntry): string | undefined {
+  const { eprint, archiveprefix, eprinttype, arxiv, arxivid } = entry.fields
+
+  const prefix = (archiveprefix ?? eprinttype ?? "").trim().toLowerCase()
+  if (eprint && (prefix === "arxiv" || prefix === "")) {
+    const match = ARXIV_BARE.exec(eprint.trim().replace(/^arxiv:\s*/i, ""))
+    if (match?.[1]) return match[1]
+  }
+
+  for (const value of [arxiv, arxivid]) {
+    const match = value ? ARXIV_BARE.exec(value.trim().replace(/^arxiv:\s*/i, "")) : null
+    if (match?.[1]) return match[1]
+  }
+
+  for (const name of ["journal", "howpublished", "booktitle", "note", "url"]) {
+    const match = ARXIV_IN_TEXT.exec(entry.fields[name] ?? "")
+    if (match?.[1]) return match[1]
+  }
+
+  return undefined
+}
+
+/**
+ * The DOI we can verify remotely: the entry's own `doi` field, or, failing
+ * that, the DOI arXiv registers for every paper (10.48550/arXiv.<id>), so that
+ * preprints without a DOI field are checked too.
+ */
 export function entryDoi(entry: BibEntry): string | undefined {
   const raw = entry.fields.doi
-  if (!raw) return undefined
-  const doi = normalizeDoi(raw)
-  return doi || undefined
+  const doi = raw ? normalizeDoi(raw) : ""
+  if (doi) return doi
+
+  const arxivId = entryArxivId(entry)
+  return arxivId ? `10.48550/arxiv.${arxivId.toLowerCase()}` : undefined
 }

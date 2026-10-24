@@ -96,3 +96,35 @@ test("entryDoi returns undefined when the DOI is absent or blank", () => {
   // Then
   assert.deepEqual(dois, [undefined, undefined])
 })
+
+test("entryDoi derives the arXiv DOI from eprint, journal and url fields when there is no doi", () => {
+  // Given
+  const entries = parseBib(`
+    @article{a, title={A}, eprint={2005.11401}, archivePrefix={arXiv}}
+    @article{b, title={B}, journal={arXiv preprint arXiv:2306.03091v2}}
+    @misc{c, title={C}, url={https://arxiv.org/abs/hep-th/9901001}}
+    @article{d, title={D}, eprint={1234.5678}, archivePrefix={bioRxiv}}
+  `)
+
+  // When
+  const dois = entries.map(entryDoi)
+
+  // Then
+  assert.deepEqual(dois, [
+    "10.48550/arxiv.2005.11401",
+    "10.48550/arxiv.2306.03091",
+    "10.48550/arxiv.hep-th/9901001",
+    undefined,
+  ])
+})
+
+test("entryDoi prefers an explicit doi over an arXiv identifier", () => {
+  // Given
+  const [entry] = parseBib("@article{a, title={A}, doi={10.1000/real}, eprint={2005.11401}, archivePrefix={arXiv}}")
+
+  // When
+  const doi = entry === undefined ? undefined : entryDoi(entry)
+
+  // Then
+  assert.equal(doi, "10.1000/real")
+})
