@@ -45,10 +45,15 @@ export interface VerifyOptions {
   mailto?: string
   /** Disable all network access (used by tests and `--offline`). */
   offline?: boolean
+  /** Waits before each retry of a 429/5xx answer, in ms. Default [400, 1200]; [] disables retries. */
+  retryDelaysMs?: number[]
 }
 
 const DEFAULT_TIMEOUT = 8_000
 const DEFAULT_TTL = 6 * 60 * 60 * 1000
+const DEFAULT_RETRY_DELAYS = [400, 1_200]
+const MAX_RETRY_WAIT = 2_000
+const RETRYABLE = new Set([429, 502, 503, 504])
 
 // ---------------------------------------------------------------------------
 // cache
@@ -176,22 +181,35 @@ class RegistryError extends Error {
 
 async function getJson(
   url: string,
-  opts: Required<Pick<VerifyOptions, "timeoutMs">> & { mailto?: string },
+  opts: Required<Pick<VerifyOptions, "timeoutMs" | "retryDelaysMs">> & { mailto?: string },
 ): Promise<unknown> {
   const headers: Record<string, string> = {
     Accept: "application/json",
     "User-Agent": opts.mailto
-      ? `opencode-citecheck/0.1 (mailto:${opts.mailto})`
-      : "opencode-citecheck/0.1",
+      ? `opencode-citecheck/0.2 (mailto:${opts.mailto})`
+      : "opencode-citecheck/0.2",
   }
 
-  const res = await fetch(url, {
-    headers,
-    signal: AbortSignal.timeout(opts.timeoutMs),
-  })
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(url, {
+      headers,
+      signal: AbortSignal.timeout(opts.timeoutMs),
+    })
 
-  if (!res.ok) throw new RegistryError(`HTTP ${res.status}`, res.status)
-  return res.json()
+    if (res.ok) return res.json()
+
+    // A registry that is rate-limiting or briefly down is worth one more try,
+    // but this runs inside a hook, so the total wait stays small.
+    const delay = opts.retryDelaysMs[attempt]
+    if (RETRYABLE.has(res.status) && delay !== undefined) {
+      const retryAfter = Number(res.headers.get("retry-after"))
+      const wait = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : delay
+      await new Promise((resolve) => setTimeout(resolve, Math.min(wait, MAX_RETRY_WAIT)))
+      continue
+    }
+
+    throw new RegistryError(`HTTP ${res.status}`, res.status)
+  }
 }
 
 async function fromCrossref(doi: string, opts: Parameters<typeof getJson>[1]): Promise<RegistryHit> {
@@ -252,6 +270,7 @@ export class Verifier {
       concurrency: options.concurrency ?? 6,
       cacheTtlMs: options.cacheTtlMs ?? DEFAULT_TTL,
       offline: options.offline ?? false,
+      retryDelaysMs: options.retryDelaysMs ?? DEFAULT_RETRY_DELAYS,
       ...(options.mailto ? { mailto: options.mailto } : {}),
     }
     this.cache = new TtlCache<VerifyResult>(this.opts.cacheTtlMs)
@@ -268,10 +287,19 @@ export class Verifier {
 
     const requestOpts = {
       timeoutMs: this.opts.timeoutMs,
+      retryDelaysMs: this.opts.retryDelaysMs,
       ...(this.opts.mailto ? { mailto: this.opts.mailto } : {}),
     }
 
     let result: VerifyResult
+
+    // Crossref does not register arXiv DOIs (DataCite does), so asking it only
+    // burns rate limit.
+    if (doi.toLowerCase().startsWith("10.48550/")) {
+      result = await this.fallback(doi, expectedTitle, requestOpts)
+      this.cache.set(doi, result)
+      return result
+    }
 
     try {
       const hit = await fromCrossref(doi, requestOpts)

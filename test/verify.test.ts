@@ -178,7 +178,7 @@ test("Verifier reports errors rather than unresolved for network and non-404 Cro
     "10.1000/server": { crossref: { status: 503 } },
   })
   context.after(fetchStub.restore)
-  const verifier = new Verifier({ timeoutMs: 100, concurrency: 1, cacheTtlMs: 1_000, offline: false })
+  const verifier = new Verifier({ timeoutMs: 100, concurrency: 1, cacheTtlMs: 1_000, offline: false, retryDelaysMs: [] })
 
   // When
   const network = await verifier.verifyDoi("10.1000/network")
@@ -301,11 +301,58 @@ test("Verifier reports an error, not a mismatch, when the other registry was unr
     },
   })
   context.after(fetchStub.restore)
-  const verifier = new Verifier({ timeoutMs: 100, concurrency: 1, cacheTtlMs: 1_000, offline: false })
+  const verifier = new Verifier({ timeoutMs: 100, concurrency: 1, cacheTtlMs: 1_000, offline: false, retryDelaysMs: [] })
 
   // When
   const result = await verifier.verifyDoi("10.1000/half", "Reliable methods for molecular biology")
 
   // Then
   assert.equal(result.status, "error")
+})
+
+test("Verifier retries a 429 and succeeds when the registry recovers", async (context) => {
+  // Given
+  const original = globalThis.fetch
+  let calls = 0
+  globalThis.fetch = async (): Promise<Response> => {
+    calls++
+    if (calls === 1) return new Response(null, { status: 429 })
+    return new Response(JSON.stringify({ message: { title: ["Reliable Study"] } }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    })
+  }
+  context.after(() => {
+    globalThis.fetch = original
+  })
+  const verifier = new Verifier({ timeoutMs: 100, concurrency: 1, cacheTtlMs: 1_000, offline: false, retryDelaysMs: [0] })
+
+  // When
+  const result = await verifier.verifyDoi("10.1000/flaky", "Reliable Study")
+
+  // Then
+  assert.equal(result.status, "ok")
+  assert.equal(calls, 2)
+})
+
+test("Verifier does not ask Crossref about arXiv DOIs", async (context) => {
+  // Given
+  const fetchStub = stubFetch({
+    "10.48550/arxiv.2005.11401": {
+      datacite: {
+        status: 200,
+        body: { data: { attributes: { titles: [{ title: "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks" }] } } },
+      },
+    },
+  })
+  context.after(fetchStub.restore)
+  const verifier = new Verifier({ timeoutMs: 100, concurrency: 1, cacheTtlMs: 1_000, offline: false })
+
+  // When
+  const result = await verifier.verifyDoi("10.48550/arxiv.2005.11401", "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks")
+
+  // Then
+  assert.equal(result.status, "ok")
+  assert.equal(result.source, "datacite")
+  assert.equal(fetchStub.calls.some((url) => url.includes("crossref")), false)
 })
