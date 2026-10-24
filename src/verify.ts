@@ -324,29 +324,48 @@ export class Verifier {
     firstProblem?: string,
   ): Promise<VerifyResult> {
     const problems: string[] = firstProblem ? [firstProblem] : []
+    let mismatch: VerifyResult | undefined
 
-    try {
-      const hit = await fromOpenAlex(doi, requestOpts)
-      if (expectedTitle && hit.title && !titlesMatch(hit.title, expectedTitle)) {
-        return {
-          status: "title-mismatch",
-          source: "openalex",
-          title: hit.title,
-          detail: `DOI resolves to "${truncate(hit.title, 90)}" but the bibliography says "${truncate(expectedTitle, 90)}"`,
+    // OpenAlex sometimes attaches the wrong record to a DOI it does not own, so
+    // a title mismatch from one registry is only a finding if no other registry
+    // vouches for the title. arXiv DOIs (10.48550) are registered with DataCite,
+    // so ask it first.
+    const registries: Array<{
+      source: "openalex" | "datacite"
+      label: string
+      lookup: typeof fromOpenAlex
+    }> = [
+      { source: "openalex", label: "OpenAlex", lookup: fromOpenAlex },
+      { source: "datacite", label: "DataCite", lookup: fromDataCite },
+    ]
+    if (doi.toLowerCase().startsWith("10.48550/")) registries.reverse()
+
+    for (const { source, label, lookup } of registries) {
+      try {
+        const hit = await lookup(doi, requestOpts)
+        if (expectedTitle && hit.title && !titlesMatch(hit.title, expectedTitle)) {
+          mismatch ??= {
+            status: "title-mismatch",
+            source,
+            title: hit.title,
+            detail: `DOI resolves to "${truncate(hit.title, 90)}" but the bibliography says "${truncate(expectedTitle, 90)}"`,
+          }
+          continue
         }
+        return { status: "ok", source, title: hit.title }
+      } catch (error) {
+        const status = error instanceof RegistryError ? error.status : 0
+        if (status !== 404) problems.push(`${label} unavailable (${describeError(error)})`)
       }
-      return { status: "ok", source: "openalex", title: hit.title }
-    } catch (error) {
-      const status = error instanceof RegistryError ? error.status : 0
-      if (status !== 404) problems.push(`OpenAlex unavailable (${describeError(error)})`)
     }
 
-    try {
-      const hit = await fromDataCite(doi, requestOpts)
-      return { status: "ok", source: "datacite", title: hit.title }
-    } catch (error) {
-      const status = error instanceof RegistryError ? error.status : 0
-      if (status !== 404) problems.push(`DataCite unavailable (${describeError(error)})`)
+    if (mismatch) {
+      // A registry we could not reach might have held the matching record.
+      if (problems.length === 0) return mismatch
+      return {
+        status: "error",
+        detail: `could not confirm this DOI: ${mismatch.detail}; ${problems.join("; ")}`,
+      }
     }
 
     if (problems.length > 0) {

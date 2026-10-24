@@ -244,3 +244,68 @@ test("Verifier offline mode returns skipped without calling fetch", async (conte
   assert.deepEqual(result, { status: "skipped", detail: "offline mode: DOI not verified" })
   assert.equal(fetchStub.calls.length, 0)
 })
+
+test("Verifier accepts an arXiv DOI when OpenAlex has the wrong record but DataCite matches", async (context) => {
+  // Given
+  const fetchStub = stubFetch({
+    "10.48550/arXiv.2005.11401": {
+      crossref: { status: 404 },
+      openalex: { status: 200, body: { title: "An unrelated record" } },
+      datacite: {
+        status: 200,
+        body: { data: { attributes: { titles: [{ title: "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks" }] } } },
+      },
+    },
+  })
+  context.after(fetchStub.restore)
+  const verifier = new Verifier({ timeoutMs: 100, concurrency: 1, cacheTtlMs: 1_000, offline: false })
+
+  // When
+  const result = await verifier.verifyDoi(
+    "10.48550/arXiv.2005.11401",
+    "Retrieval-Augmented Generation for Knowledge-Intensive {NLP} Tasks",
+  )
+
+  // Then
+  assert.equal(result.status, "ok")
+  assert.equal(result.source, "datacite")
+})
+
+test("Verifier still reports a mismatch when no registry has a matching title", async (context) => {
+  // Given
+  const fetchStub = stubFetch({
+    "10.1000/wrong": {
+      crossref: { status: 404 },
+      openalex: { status: 200, body: { title: "Financial forecasting with neural networks" } },
+      datacite: { status: 404 },
+    },
+  })
+  context.after(fetchStub.restore)
+  const verifier = new Verifier({ timeoutMs: 100, concurrency: 1, cacheTtlMs: 1_000, offline: false })
+
+  // When
+  const result = await verifier.verifyDoi("10.1000/wrong", "Reliable methods for molecular biology")
+
+  // Then
+  assert.equal(result.status, "title-mismatch")
+  assert.equal(result.source, "openalex")
+})
+
+test("Verifier reports an error, not a mismatch, when the other registry was unreachable", async (context) => {
+  // Given
+  const fetchStub = stubFetch({
+    "10.1000/half": {
+      crossref: { status: 404 },
+      openalex: { status: 200, body: { title: "Financial forecasting with neural networks" } },
+      datacite: { status: 503 },
+    },
+  })
+  context.after(fetchStub.restore)
+  const verifier = new Verifier({ timeoutMs: 100, concurrency: 1, cacheTtlMs: 1_000, offline: false })
+
+  // When
+  const result = await verifier.verifyDoi("10.1000/half", "Reliable methods for molecular biology")
+
+  // Then
+  assert.equal(result.status, "error")
+})
