@@ -18,6 +18,16 @@ Bibliography: refs.bib
 
 No API keys. No hosted service. No account.
 
+Not using OpenCode? The same checks run from the command line, for a single file, a whole folder or CI:
+
+```bash
+npx opencode-citecheck check paper.tex
+```
+
+See [CLI, for CI](#cli-for-ci).
+
+![opencode-citecheck flagging a DOI that does not exist](https://raw.githubusercontent.com/Xtardy/opencode-citecheck/main/docs/demo.gif)
+
 ---
 
 ## Why this exists
