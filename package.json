@@ -1,6 +1,6 @@
 {
   "name": "opencode-citecheck",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Verify \\cite keys and DOIs inside the OpenCode agent loop — catch fabricated, unresolved and retracted references before they ship.",
   "type": "module",
   "main": "dist/index.js",
